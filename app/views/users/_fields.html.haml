@@ -1,5 +1,7 @@
 = errors_for user
 
+%h2= 'Credentials'
+
 .required
   = f.label :name
   = f.text_field :name
@@ -38,3 +40,18 @@
     = f.check_box :admin
     = f.label :admin, 'Admin?'
 
+  %h2= 'Applications'
+  %table.apps
+    %thead
+      %tr
+        %th= t('.name')
+        - unless user.admin?
+          %th= t('.permit')
+        %th= t('.watcher')
+    %tbody
+      - apps.each do |app|
+        %tr
+          %td= app.name
+          - unless user.admin?
+            %td= check_box_tag 'user[permitted_app_ids][]', app.id, f.object.permitted_app_ids.include?(app.id), :id => "permitted_app_ids_#{app.id}", :onchange => 'removeWatcher(this)'
+          %td= check_box_tag 'user[watched_app_ids][]', app.id, f.object.watched_app_ids.include?(app.id), :id => "watched_app_ids_#{app.id}", :onchange => 'permitApp(this)'

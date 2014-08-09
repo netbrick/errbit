@@ -17,7 +17,7 @@ class ProblemsController < ApplicationController
     if current_user.admin?
       App.find(params[:app_id])
     else
-      current_user.apps.find(params[:app_id])
+      current_user.permitted_apps.find(params[:app_id])
     end
   }
 

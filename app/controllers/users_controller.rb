@@ -8,6 +8,9 @@ class UsersController < ApplicationController
   expose(:users) {
     User.all.page(params[:page]).per(current_user.per_page)
   }
+  expose(:apps) {
+      @apps = App.all
+  }
 
   def index; end
   def new; end
@@ -65,6 +68,7 @@ class UsersController < ApplicationController
   def user_permit_params
     @user_permit_params ||= [:name,:username, :email, :github_login, :per_page, :time_zone]
     @user_permit_params << :admin if current_user.admin? && current_user.id != params[:id]
+    @user_permit_params |= [ :permitted_app_ids => [], :watched_app_ids => [] ] if current_user.admin?
     @user_permit_params |= [:password, :password_confirmation] if user_password_params.values.all?{|pa| !pa.blank? }
     @user_permit_params
   end
@@ -74,4 +78,3 @@ class UsersController < ApplicationController
   end
 
 end
-

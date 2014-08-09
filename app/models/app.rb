@@ -31,6 +31,8 @@ class App
 
   has_many :problems, :inverse_of => :app, :dependent => :destroy
 
+  has_many :permit_users, :class_name => 'User', :inverse_of => :permit_apps
+
   before_validation :generate_api_key, :on => :create
   before_save :normalize_github_repo
   after_update :store_cached_attributes_on_problems

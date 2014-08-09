@@ -8,7 +8,7 @@ class AppsController < ApplicationController
   respond_to :html
 
   expose(:app_scope) {
-    (current_user.admin? ? App : current_user.apps)
+    (current_user.admin? ? App : current_user.permitted_apps)
   }
 
   expose(:apps) {

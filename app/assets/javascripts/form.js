@@ -119,3 +119,16 @@ function activateLabelIcons() {
   };
 };
 
+function permitApp(checkbox) {
+  var checkbox = $(checkbox);
+  if (checkbox.prop('checked')) {
+    checkbox.parents('tr').find('input[type="checkbox"]').prop('checked', true);
+  }
+}
+
+function removeWatcher(checkbox) {
+  var checkbox = $(checkbox);
+  if (!checkbox.prop('checked')) {
+    checkbox.parents('tr').find('input[type="checkbox"]').prop('checked', false);
+  }
+}
