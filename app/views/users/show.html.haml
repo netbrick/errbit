@@ -31,3 +31,12 @@
     %th Created
     %td= user.created_at.to_s(:micro)
 
+  - unless user.admin?
+    %tr
+      %th Permitted applications
+      %td
+        = user.permitted_apps.map { |a| link_to a.name, app_path(a) }.join(', ').html_safe
+  %tr
+    %th Watched applications
+    %td
+      = user.apps.map { |a| link_to a.name, app_path(a) }.join(', ').html_safe

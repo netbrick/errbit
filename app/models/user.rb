@@ -38,10 +38,14 @@ class User
 
   before_save :ensure_authentication_token
 
+  after_save :save_watched_apps, :if => 'watched_apps?'
+  attr_accessor :watched_apps
+
   validates_presence_of :name
   validates_uniqueness_of :github_login, :allow_nil => true
 
   has_many :apps, :foreign_key => 'watchers.user_id'
+  has_and_belongs_to_many :permitted_apps, :class_name => 'App'
 
   if Errbit::Config.user_has_username
     field :username
@@ -50,6 +54,18 @@ class User
 
   def watchers
     apps.map(&:watchers).flatten.select {|w| w.user_id.to_s == id.to_s}
+  end
+
+  def watched_app_ids
+    apps.map(&:id)
+  end
+
+  def watched_app_ids=(s)
+    @watched_apps = s
+  end
+
+  def watched_apps?
+    (@watched_apps || []).any?
   end
 
   def per_page
@@ -105,6 +121,18 @@ class User
     loop do
       token = Devise.friendly_token
       break token unless User.where(authentication_token: token).first
+    end
+  end
+
+  def save_watched_apps
+    # Remove old
+    App.find(watched_app_ids - watched_apps).each do |app|
+      app.watchers.where(:user_id => self.id).delete
+    end
+
+    # Add new one
+    App.find(watched_apps - watched_app_ids).each do |app|
+      app.watchers.create(:user_id => self.id)
     end
   end
 end

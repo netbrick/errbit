@@ -12,6 +12,8 @@
         %th= link_for_user_sort 'Username'
       %th.main= link_for_user_sort 'Email'
       %th= link_for_user_sort 'Admin?', 'admin'
+      %th Permitted Apps
+      %th Watched Apps
 
   %tbody
     - users.each do |user|
@@ -23,5 +25,7 @@
           %td= user.username
         %td= user.email
         %td= user.admin? ? 'Y' : 'N'
+        %td= user.admin? ? 'All' : user.permitted_apps.map { |a| link_to a.name, app_path(a) }.join(', ').html_safe
+        %td= user.apps.map { |a| link_to a.name, app_path(a) }.join(', ').html_safe
 = paginate users
 
