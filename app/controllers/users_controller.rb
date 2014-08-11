@@ -10,6 +10,7 @@ class UsersController < ApplicationController
   expose(:users) {
     User.ordered_by(user_params_sort, user_params_order).page(params[:page]).per(current_user.per_page)
   }
+
   expose(:apps) {
       @apps = App.all
   }
