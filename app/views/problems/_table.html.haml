@@ -8,7 +8,7 @@
         %th= link_for_sort "What &amp; Where".html_safe, "message"
         %th= link_for_sort "Latest", "last_notice_at"
         %th= link_for_sort "Deploy", "last_deploy_at"
-        %th= "Count"
+        %th= link_for_sort "Count"
         - if any_issue_links
           %th Issue
         %th Resolve
