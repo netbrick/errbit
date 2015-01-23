@@ -1,7 +1,4 @@
-require 'spec_helper'
-
-describe AppsController do
-
+describe AppsController, type: 'controller' do
   it_requires_authentication
   it_requires_admin_privileges :for => {:new => :get, :edit => :get, :create => :post, :update => :put, :destroy => :delete}
 
@@ -218,7 +215,7 @@ describe AppsController do
     describe "POST /apps" do
       before do
         @app = Fabricate(:app)
-        App.stub(:new).and_return(@app)
+        allow(App).to receive(:new).and_return(@app)
       end
 
       context "when the create is successful" do
@@ -308,42 +305,6 @@ describe AppsController do
             expect(@app.issue_tracker_configured?).to eq false
           end
         end
-
-        ErrbitPlugin::Registry.issue_trackers.each do |key, klass|
-          context key do
-            it "should save tracker params" do
-              params = {
-                :options => klass.fields.inject({}){|hash,f| hash[f[0]] = "test_value"; hash },
-                :type_tracker => key.dup.to_s
-              }
-              put :update, :id => @app.id, :app => {:issue_tracker_attributes => params}
-
-              @app.reload
-
-              tracker = @app.issue_tracker
-              expect(tracker.tracker).to be_a(ErrbitPlugin::Registry.issue_trackers[key])
-              klass.fields.each do |field, field_info|
-                case field
-                when :ticket_properties; tracker.send(field.to_sym).should == 'card_type = defect'
-                else tracker.options[field.to_s].should == 'test_value'
-                end
-              end
-            end
-
-            it "should show validation notice when sufficient params are not present" do
-              # Leave out one required param
-              # TODO. previous test was not relevant because one params can be enough. So put noone
-              put :update, :id => @app.id, :app => {
-                :issue_tracker_attributes => {
-                  :type_tracker => key.dup.to_s
-                }
-              }
-
-              @app.reload
-              expect(@app.issue_tracker_configured?).to eq false
-            end
-          end
-        end
       end
     end
 
@@ -358,8 +319,10 @@ describe AppsController do
       end
 
       it "should destroy the app" do
-        expect(@app).to receive(:destroy)
         delete :destroy, :id => @app.id
+        expect {
+          @app.reload
+        }.to raise_error(Mongoid::Errors::DocumentNotFound)
       end
 
       it "should display a message" do
@@ -397,10 +360,8 @@ describe AppsController do
         expect do
           post :regenerate_api_key, :id => app.id
           expect(request).to redirect_to edit_app_path(app)
-        end.to change { app.api_key }
+        end.to change { app.reload.api_key }
       end
     end
-
   end
-
 end

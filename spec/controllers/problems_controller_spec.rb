@@ -1,7 +1,4 @@
-require 'spec_helper'
-
-describe ProblemsController do
-
+describe ProblemsController, type: 'controller' do
   it_requires_authentication :for => {
     :index => :get, :show => :get, :resolve => :put, :search => :get
   },
@@ -12,9 +9,7 @@ describe ProblemsController do
   let(:admin) { Fabricate(:admin) }
   let(:problem) { Fabricate(:problem, :app => app, :environment => "production") }
 
-
   describe "GET /problems" do
-    #render_views
     context 'when logged in as an admin' do
       before(:each) do
         sign_in admin
@@ -220,82 +215,100 @@ describe ProblemsController do
     before do
       sign_in admin
 
-      @problem = Fabricate(:err)
-      App.stub(:find).with(@problem.app.id.to_s).and_return(@problem.app)
-      @problem.app.problems.stub(:find).and_return(@problem.problem)
-      @problem.problem.stub(:resolve!)
+      @err = Fabricate(:err)
     end
 
-    it 'finds the app and the problem' do
-      expect(App).to receive(:find).with(@problem.app.id.to_s).and_return(@problem.app)
-      expect(@problem.app.problems).to receive(:find).and_return(@problem.problem)
-      put :resolve, :app_id => @problem.app.id, :id => @problem.problem.id
-      expect(controller.app).to eq @problem.app
-      expect(controller.problem).to eq @problem.problem
+    it 'finds the app and the err' do
+      expect(App).to receive(:find).with(@err.app.id.to_s).and_return(@err.app)
+      expect(@err.app.problems).to receive(:find).and_return(@err.problem)
+      put :resolve, :app_id => @err.app.id, :id => @err.problem.id
+      expect(controller.app).to eq @err.app
+      expect(controller.problem).to eq @err.problem
     end
 
     it "should resolve the issue" do
-      expect(@problem.problem).to receive(:resolve!).and_return(true)
-      put :resolve, :app_id => @problem.app.id, :id => @problem.problem.id
+      put :resolve, :app_id => @err.app.id, :id => @err.problem.id
+      expect(@err.problem.reload.resolved).to be(true)
     end
 
     it "should display a message" do
-      put :resolve, :app_id => @problem.app.id, :id => @problem.problem.id
+      put :resolve, :app_id => @err.app.id, :id => @err.problem.id
       expect(request.flash[:success]).to match(/Great news/)
     end
 
     it "should redirect to the app page" do
-      put :resolve, :app_id => @problem.app.id, :id => @problem.problem.id
-      expect(response).to redirect_to(app_path(@problem.app))
+      put :resolve, :app_id => @err.app.id, :id => @err.problem.id
+      expect(response).to redirect_to(app_path(@err.app))
     end
 
     it "should redirect back to problems page" do
-      request.env["Referer"] = problems_path
-      put :resolve, :app_id => @problem.app.id, :id => @problem.problem.id
+      request.env["HTTP_REFERER"] = problems_path
+      put :resolve, :app_id => @err.app.id, :id => @err.problem.id
       expect(response).to redirect_to(problems_path)
     end
   end
 
   describe "POST /apps/:app_id/problems/:id/create_issue" do
+    before { sign_in admin }
 
-    before(:each) do
-      sign_in admin
-    end
-
-    context "successful issue creation" do
-      context "lighthouseapp tracker" do
-        let(:notice) { Fabricate :notice }
-        let(:problem) { notice.problem }
-
-        before(:each) do
-          controller.stub(:problem).and_return(problem)
-          controller.stub(:current_user).and_return(admin)
-          IssueCreation.should_receive(:new).with(problem, admin, nil, request).and_return(double(:execute => true))
-          post :create_issue, :app_id => problem.app.id, :id => problem.id
-        end
-
-        it "should redirect to problem page" do
-          expect(response).to redirect_to( app_problem_path(problem.app, problem) )
-          expect(flash[:error]).to be_blank
+    context "when app has a issue tracker" do
+      let(:notice) { Fabricate :notice }
+      let(:problem) { notice.problem }
+      let(:issue_tracker) do
+        Fabricate(:issue_tracker).tap do |t|
+          t.instance_variable_set(:@tracker, ErrbitPlugin::MockIssueTracker.new(t.options))
         end
       end
-    end
 
-    context "error during request to a tracker" do
-      before(:each) do
-        IssueCreation.should_receive(:new).with(problem, admin, nil, request).and_return(
-          double(:execute => false, :errors => double(:full_messages => ['not create']))
-        )
-        controller.stub(:problem).and_return(problem)
-        post :create_issue, :app_id => problem.app.id, :id => problem.id
+      before do
+        problem.app.issue_tracker = issue_tracker
+        allow(controller).to receive(:problem).and_return(problem)
+        allow(controller).to receive(:current_user).and_return(admin)
       end
 
       it "should redirect to problem page" do
-        expect(response).to redirect_to( app_problem_path(problem.app, problem) )
-        expect(flash[:error]).to eql 'not create'
+        post :create_issue, app_id: problem.app.id, id: problem.id
+        expect(response).to redirect_to(app_problem_path(problem.app, problem))
+        expect(flash[:error]).to be_blank
+      end
+
+      it "should save the right title" do
+        post :create_issue, app_id: problem.app.id, id: problem.id
+        title = "[#{ problem.environment }][#{ problem.where }] #{problem.message.to_s.truncate(100)}"
+        line = issue_tracker.tracker.output.shift
+        expect(line[0]).to eq(title)
+      end
+
+      it "should renders the issue body" do
+        post :create_issue, app_id: problem.app.id, id: problem.id, format: 'html'
+        expect(response).to render_template("issue_trackers/issue")
+      end
+
+      it "should update the problem" do
+        post :create_issue, app_id: problem.app.id, id: problem.id
+        expect(problem.issue_link).to eq("http://example.com/mock-errbit")
+        expect(problem.issue_type).to eq("mock")
+      end
+
+
+      context "when rendering views" do
+        render_views
+
+        it "should save the right body" do
+          post :create_issue, app_id: problem.app.id, id: problem.id, format: 'html'
+          line = issue_tracker.tracker.output.shift
+          expect(line[1]).to include(app_problem_url problem.app, problem)
+        end
       end
     end
 
+    context "when app has no issue tracker" do
+      it "should redirect to problem page" do
+        post :create_issue, app_id: problem.app.id, id: problem.id
+        expect(response).to redirect_to( app_problem_path(problem.app, problem) )
+        expect(flash[:error]).to eql "This app has no issue tracker setup."
+      end
+    end
   end
 
   describe "DELETE /apps/:app_id/problems/:id/unlink_issue" do
@@ -437,13 +450,10 @@ describe ProblemsController do
       end
 
       it "should redirect back to the app page" do
-        request.env["Referer"] = edit_app_path(@app)
+        request.env["HTTP_REFERER"] = edit_app_path(@app)
         put :destroy_all, :app_id => @app.id
         expect(response).to redirect_to(edit_app_path(@app))
       end
     end
-
   end
-
 end
-

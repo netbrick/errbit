@@ -43,9 +43,9 @@ class Problem
 
   before_create :cache_app_attributes
 
-  scope :resolved, where(:resolved => true)
-  scope :unresolved, where(:resolved => false)
-  scope :ordered, order_by(:last_notice_at.desc)
+  scope :resolved, ->{ where(:resolved => true) }
+  scope :unresolved, ->{ where(:resolved => false) }
+  scope :ordered, ->{ order_by(:last_notice_at.desc) }
   scope :for_apps, lambda {|apps| where(:app_id.in => apps.all.map(&:id))}
 
   validates_presence_of :last_notice_at, :first_notice_at
@@ -71,10 +71,6 @@ class Problem
 
   def notices
     Notice.for_errs(errs).ordered
-  end
-
-  def comments_allowed?
-    Errbit::Config.allow_comments_with_issue_tracker || app.comments_allowed?
   end
 
   def resolve!
@@ -184,4 +180,3 @@ class Problem
       Digest::MD5.hexdigest(value.to_s)
     end
 end
-

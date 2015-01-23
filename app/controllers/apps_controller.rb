@@ -3,9 +3,9 @@ class AppsController < ApplicationController
   include ProblemsSearcher
   include AppsSearcher
 
-  before_filter :require_admin!, :except => [:index, :show]
-  before_filter :parse_email_at_notices_or_set_default, :only => [:create, :update]
-  before_filter :parse_notice_at_notices_or_set_default, :only => [:create, :update]
+  before_action :require_admin!, :except => [:index, :show]
+  before_action :parse_email_at_notices_or_set_default, :only => [:create, :update]
+  before_action :parse_notice_at_notices_or_set_default, :only => [:create, :update]
   respond_to :html
 
   expose(:app_scope) {
@@ -41,7 +41,8 @@ class AppsController < ApplicationController
     apps
   }
 
-  expose(:app, :ancestor => :app_scope)
+  expose(:app, ancestor: :app_scope, attributes: :app_params)
+
   expose(:app_decorate) do
     AppDecorator.new(app)
   end
@@ -49,6 +50,7 @@ class AppsController < ApplicationController
   expose(:all_errs) {
     !!params[:all_errs]
   }
+
   expose(:problems) {
     if request.format == :atom
       app.problems.unresolved.ordered
@@ -165,5 +167,10 @@ class AppsController < ApplicationController
           flash[:error] = "Couldn't parse your notification frequency. Value was reset to default (#{default_array.join(', ')})."
         end
       end
+    end
+
+  private
+    def app_params
+      params.require(:app).permit!
     end
 end
