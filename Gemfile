@@ -2,6 +2,8 @@ source 'https://rubygems.org'
 
 RAILS_VERSION = '~> 4.1.8'
 
+ruby ENV['GEMFILE_RUBY_VERSION'] if ENV['GEMFILE_RUBY_VERSION']
+
 gem 'actionmailer', RAILS_VERSION
 gem 'actionpack', RAILS_VERSION
 gem 'railties', RAILS_VERSION
@@ -47,13 +49,21 @@ gem 'httparty'
 # Flowdock
 gem 'flowdock'
 
+# Asynchronous JOB
+# ---------------------------------------
+gem 'sidekiq', '~> 3.2.6'
+gem 'sinatra', require: false
+gem 'slim'
+gem 'sidekiq-failures'
+
 # Authentication
 # ---------------------------------------
 # GitHub OAuth
 gem 'omniauth-github'
 
 gem 'ri_cal'
-gem 'yajl-ruby', :require => "yajl"
+gem 'yajl-ruby', platform: 'ruby'
+gem 'json', platform: 'jruby'
 
 group :development, :test do
   gem 'airbrake', :require => false
@@ -70,7 +80,7 @@ group :development do
 
   # better errors
   gem 'better_errors'
-  gem 'binding_of_caller'
+  gem 'binding_of_caller', platform: 'ruby'
   gem 'meta_request'
   gem 'foreman', :require => false
 end
@@ -94,7 +104,7 @@ end
 
 group :heroku, :production do
   gem 'rails_12factor', require: !!ENV["HEROKU"]
-  gem 'unicorn', :require => false
+  gem 'unicorn', require: false, platform: 'ruby'
 end
 
 gem 'sass-rails'
